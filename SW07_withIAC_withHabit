@@ -1,0 +1,216 @@
+var             //"hat" always means deviations from steady state
+w_hat           //Real Wage
+Pie_hat         //Inflation
+C_hat           //Consumption
+mc_hat          //Real Marginal Costs
+K_hat           //Capitalstock
+rk_hat          //Real capital interestrate
+Y_hat           //Output
+R_hat           //Nominal interest rate
+x               //Output-gap
+mps             //Monetary policy shock verlauf                
+zeta            //Technology process
+H_hat           //Hours Worked
+I_hat           //Investment
+Q_hat           //Tobins Q
+
+
+
+
+//var aus flexible economy
+wf_hat          //Real wage flexible economy
+Cf_hat          //Consumption flexible economy
+mcf_hat         //Real Marginal Costs flexible economy
+Kf_hat          //Capitalstock flexible economy
+rkf_hat         //Real capital interest rate flexible economy
+Yf_hat          //Output flexible Economy
+If_hat          //Investment flexible Economy
+Hf_hat          //Hours Worked flexible Economy
+Qf_hat          //Tobins Q flexible Model
+rrf_hat         //real interest rate in flexible model or "natural real interest rate"
+
+
+;
+
+varexo          //Exogene Shocks
+eps_mps         //monetary policy shock
+eps_zeta        //productivity shock  
+;
+
+
+parameters
+bet             //rate of time preference
+delta           //depreciation rate of capital
+theta           //calvo paramter prices
+lambdaf         //Monopy Power of Intermediate Firms
+kappa           //traditional slope of Philipps curve
+alpha           //capital share
+rhomps          //Monetary Policy Shock Persistence
+rhozeta         //Technology Shock Persistence
+a               //Taylor Rule Smoothing Coefficient
+rpie            //Taylor Rule Nominal Interest Rate Coefficient aka Taylor Principle
+rx              //Taylor Rule Output-Gap Coefficient
+ryy             //Taylor Rule Output-Growth-Rate    
+
+IAC             //Investment Adjustment Costs
+HAB             //Consumption Habit Formation
+sigC            //Elasticity of Substitution of Consumption
+phi             //Inverse of Frisch Elasticity
+
+
+//Myopia Paramter
+M               //general myopia household
+;
+
+bet             = 0.99;       //rate of time preference
+delta           = 0.025;      //depreciation rate of capital - value set like SW07
+theta           = 0.7;        //calvo parameter prices (survival rate of prices)
+lambdaf         = 1.2;        //Monopy power of intermediate firms
+alpha           = 0.24;       //capital share  - estimation from SW07
+rhomps          = 0;//0.5;    //Monetary Policy Shock Persistence
+rhozeta         = 0.5;        //Technology Shock Persistence
+a               = 0;//0.8;    //Taylor Rule Smoothing Coefficient
+rpie            = 1.5;        //Taylor Rule Nominal Interest Rate Coefficient aka Taylor Principle
+rx              = 0.06;//0.2; //Taylor Rule Output-Gap Coefficient 0.06 like in SW
+ryy             = 0.25;       //Taylor Rule Output-Growth-Rate
+IAC             = 0.01;//7;   //Investment Adjustment Costs
+HAB             = 0;//0.8;    //Consumption Habit Formation
+sigC            = 1.5;        
+phi             = 1.95;       //Inverse of Frisch Elasticity
+M               = 0.91;       //general myopia 
+      
+kappa           = (((1-theta) * (1 - bet*theta)) / theta);                  
+
+
+model(linear);
+
+//steady state model
+
+    #rk_bar     = (1 / bet) - (1 - delta);                                                             //Real capital interestrate Steady State
+    #H_bar      = 1/3;                                                                                 //Hours worked Steady State
+    #Pie_bar    = 1;                                                                                   //Inflation target Steady State = 1
+    #R_bar      = Pie_bar * (1 / bet);                                                                 //Nominal interest rate Steady State
+    #w_bar      = ((1/(lambdaf*rk_bar^alpha))*alpha^alpha*((1-alpha)^(1-alpha)))^(1/(1-alpha));        //Real wage Steady State        
+    #K_bar      = (alpha / (1 - alpha)) * (w_bar / rk_bar) * H_bar;                                    //Capital stock Steady State
+    #I_bar      = (1 - (1 - delta)) * K_bar;                                                           //Investment Steady State
+    #Y_bar      = H_bar ^ (1 - alpha) + K_bar ^ alpha;                                                 //Output Steady State     
+    #C_bar      = Y_bar - I_bar;                                                                       //Consumtion Steady State                                                
+    //#w_bar       = C_bar * (1 - HAB) + H_bar^phi;
+
+/*    
+#rk_bar=0.035;
+#H_bar=1/3;
+#Pie_bar=1;
+#R_bar=1.0101;
+#w_bar=1.0982;
+#K_bar=3.303;
+#I_bar=0.0825;
+#Y_bar=1.734;
+#C_bar=1.651;
+*/
+
+
+
+//Model Natural Economy
+    //Natural Real Interest Rate
+    //rrf_hat     = zeta(+1) - zeta; 
+
+    //Natural Economy Efficient Pricing  
+    1           =  mcf_hat;
+
+    //Consumption Euler Equation
+    Cf_hat       = (HAB / (1 + HAB)) * Cf_hat(-1) + (1 / (1 + HAB)) * M * Cf_hat(+1) - ((1 - HAB) / ((1 + HAB) * sigC)) * rrf_hat + (((sigC - 1) * H_bar * w_bar)/(sigC * (1 + HAB) * C_bar)) * (Hf_hat - M * Hf_hat(+1));
+    
+    //Marginal Cost from FOC intermediate good firms
+    mcf_hat      =  alpha * rkf_hat + (1 - alpha) * wf_hat - (1 - alpha) * zeta;
+
+    //Capital Accumulation Equation
+    Kf_hat       = (1 - delta) * Kf_hat(-1) + (1 - (1-delta)) * If_hat;
+
+    //Tobins-Q-Gleichung
+    Qf_hat       = - rrf_hat + (rk_bar / (rk_bar + (1 - delta))) * rkf_hat(+1) + ((1-delta) / (rk_bar + (1-delta))) * M * Qf_hat(+1);
+
+    //Investment Euler Equation
+    If_hat       = (1 / (1 + bet)) * ((Qf_hat / IAC) + If_hat(-1) + bet * M * If_hat(+1));
+
+    //Labour Leisure Equation Household Optimization
+    wf_hat       = phi * Hf_hat + (1 / (1 - HAB)) * Cf_hat - (HAB / (1 - HAB)) * Cf_hat(-1);
+
+    //Firm FOC capital, SW Equation (11)    
+    rkf_hat      =  wf_hat - (Kf_hat - Hf_hat);
+
+    //Aggregate Resource Constraint, SW Equation (1)']
+    Yf_hat       = (C_bar / Y_bar) * Cf_hat  + (I_bar / Y_bar) * If_hat;
+
+    //Aggregate Production Function, SW Equation (5)
+	  Yf_hat       = alpha * Kf_hat + (1 - alpha) * Hf_hat + zeta;
+
+
+//Model Sticky Prices:
+
+    //Philipps Curve
+    Pie_hat     = bet * Pie_hat(+1) + kappa * mc_hat;
+
+    //Consumption Euler Equation
+    C_hat       = (HAB / (1 + HAB)) * C_hat(-1) + (1 / (1 + HAB)) * M * C_hat(+1) - ((1 - HAB) / ((1 + HAB) * sigC)) * (R_hat - Pie_hat(+1)) + (((sigC - 1) * H_bar * w_bar)/(sigC * (1 + HAB) * C_bar)) * (H_hat - H_hat(+1));
+    
+    //Marginal Cost from FOC intermediate good firms
+    mc_hat      =  alpha * rk_hat + (1 - alpha) * w_hat - (1 - alpha) * zeta;
+
+    //Capital Accumulation Equation
+    K_hat       = (1 - delta) * K_hat(-1) + (1 - (1-delta)) * I_hat;
+
+    //Tobins-Q-Equation
+    Q_hat       = - R_hat + Pie_hat(+1) + (rk_bar / (rk_bar + (1 - delta))) * rk_hat(+1) + ((1-delta) / (rk_bar + (1-delta))) * M * Q_hat(+1);
+
+    //Investment Euler Equation
+    I_hat       = (1 / (1 + bet)) * ((Q_hat / IAC) + I_hat(-1) + bet * M * I_hat(+1));
+
+    //Labour Leisure Equation Household Optimization
+    w_hat       = phi * H_hat + (1 / (1 - HAB)) * C_hat - (HAB / (1 - HAB)) * C_hat(-1);
+
+    //Firm FOC capital, SW Equation (11)    
+    rk_hat      =  w_hat - (K_hat - H_hat);
+
+    //Aggregate Resource Constraint, SW Equation (1)']
+    Y_hat       = (C_bar / Y_bar) * C_hat  + (I_bar / Y_bar) * I_hat;
+
+    //Aggregate Production Function, SW Equation (5)
+	  Y_hat       = alpha * K_hat + (1 - alpha) * H_hat + zeta;
+
+    //Taylor Rule
+    //R_hat       = a * R_hat(-1) + (1-a) * (rpie * Pie_hat + rx * x) + mps;
+    //Taylor Rule from Smets & Wouters
+    R_hat         = a * R_hat(-1) + (1-a) * (rpie * Pie_hat + rx * x) + ryy * (x - x(-1)) + mps;
+
+    //output gap
+    x           = Y_hat - Yf_hat;
+    
+
+    
+
+//Shocks
+
+    //Monetary Policy Shock Process
+    mps         = rhomps * mps(-1) + eps_mps;
+
+    //Technology Shock Process
+    zeta        = rhozeta * zeta(-1) + eps_zeta;
+
+end;
+
+//initval;  //no need since model is defines as linear
+//end;
+
+shocks;
+
+var eps_mps;
+stderr 0.01;
+
+end;
+
+steady;
+
+check;
+ 
+stoch_simul(irf=30);
